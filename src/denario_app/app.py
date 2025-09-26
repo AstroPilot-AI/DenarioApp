@@ -176,12 +176,12 @@ st.markdown(
 # </a>
 
 tab_descr, tab_idea, tab_method, tab_restults, tab_paper,  tab_check_idea, tab_keywords,= st.tabs([
-    "**Description**", 
+    "**Input prompt**", 
     "**Idea**", 
     "**Methods**", 
-    "**Results**", 
+    "**Analysis**", 
     "**Paper**", 
-    "Check idea",
+    "Literature review",
     "Keywords"
 ])
 

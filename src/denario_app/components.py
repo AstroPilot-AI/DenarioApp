@@ -13,7 +13,7 @@ from utils import show_markdown_file, create_zip_in_memory, stream_to_streamlit
 
 def description_comp(den: Denario) -> None:
 
-    st.header("Data description")
+    st.header("Input prompt")
 
     # Load current data description if it exists
     current_description = ""
@@ -409,7 +409,7 @@ def method_comp(den: Denario) -> None:
         
 def results_comp(den: Denario) -> None:
 
-    st.header("Results")
+    st.header("Analysis")
     st.write("Compute the results, given the methods, idea and data description.")
 
     model_keys = list(models.keys())
@@ -723,7 +723,7 @@ def paper_comp(den: Denario) -> None:
 
 def check_idea_comp(den: Denario) -> None:
     
-    st.header("Check idea")
+    st.header("Literature review")
     st.write("Check if the research idea has been investigated in previous literature.")
 
     fast = st.toggle("Fast generation",value=True,key="fast_toggle_check_idea")
