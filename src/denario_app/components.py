@@ -880,6 +880,14 @@ def keywords_comp(den: Denario) -> None:
     
     n_keywords = st.slider("Number of keywords to generate:", min_value=1, max_value=10, value=5)
     
+    # Keyword type selection
+    kw_type = st.selectbox(
+        "Keyword type:",
+        options=['unesco', 'aaai', 'aas'],
+        index=0,
+        help="Choose the keyword taxonomy: UNESCO (general), AAAI (AI/computing), or AAS (astronomy)"
+    )
+    
     # Initialize session state for tracking operations
     if "keywords_running" not in st.session_state:
         st.session_state.keywords_running = False
@@ -918,14 +926,20 @@ def keywords_comp(den: Denario) -> None:
     if st.session_state.keywords_running and input_text:
         with st.spinner("Generating keywords..."):
             try:
-                den.get_keywords(input_text, n_keywords=n_keywords)
+                den.get_keywords(input_text, n_keywords=n_keywords, kw_type=kw_type)
                 
                 if st.session_state.keywords_running:  # Only show success if not stopped
                     if hasattr(den.research, 'keywords') and den.research.keywords:
                         st.success("Keywords generated!")
                         st.write("### Generated Keywords")
-                        for keyword, url in den.research.keywords.items():
-                            st.markdown(f"- [{keyword}]({url})")
+                        if kw_type == 'aas':
+                            # Handle dict format (AAS keywords with URLs)
+                            for keyword, url in den.research.keywords.items():
+                                st.markdown(f"- [{keyword}]({url})")
+                        else:
+                            # Handle list format (UNESCO keywords)
+                            for keyword in den.research.keywords:
+                                st.markdown(f"- {keyword}")
                     else:
                         st.error("No keywords were generated. Please try again with different text.")
             except Exception as e:
