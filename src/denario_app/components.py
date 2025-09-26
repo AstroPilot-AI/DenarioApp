@@ -792,7 +792,80 @@ def check_idea_comp(den: Denario) -> None:
     except FileNotFoundError:
         st.write("Need to generate an idea first.")
 
+def referee_comp(den: Denario) -> None:
     
+    st.header("Referee report")
+    st.write("Review a paper, producing a report providing feedback on the quality of the articled and aspects to be improved.")
+
+    model_keys = list(models.keys())
+
+    default_referee_index = model_keys.index("gemini-2.5-flash")
+
+    st.caption("Choose a LLM model for the referee")
+    llm_model = st.selectbox(
+        "LLM Model",
+        model_keys,
+        index=default_referee_index,
+        key="llm_model_referee"
+    )
+
+    try:
+
+        if "referee_running" not in st.session_state:
+            st.session_state.referee_running = False
+        
+        col1, col2 = st.columns([1, 1])
+        with col1:
+            press_button = st.button("Review", type="primary", key="start_referee", disabled=st.session_state.referee_running)
+        with col2:
+            stop_button = st.button("Stop", type="secondary", key="stop_referee", disabled=not st.session_state.referee_running)
+        
+        # Add custom CSS for red border on stop button
+        st.markdown("""
+            <style>
+            div[data-testid="column"]:nth-of-type(2) button {
+                border: 2px solid #ff4444 !important;
+                color: #ff4444 !important;
+            }
+            div[data-testid="column"]:nth-of-type(2) button:hover {
+                background-color: #ff4444 !important;
+                color: white !important;
+            }
+            </style>
+        """, unsafe_allow_html=True)
+        
+        if press_button and not st.session_state.referee_running:
+            st.session_state.referee_running = True
+            st.rerun()
+        
+        if stop_button and st.session_state.referee_running:
+            st.session_state.referee_running = False
+            st.warning("Operation stopped by user.")
+            st.rerun()
+        
+        if st.session_state.referee_running:
+            with st.spinner("Referee reviewing the article...", show_time=True):
+                log_box = st.empty()
+
+                # Redirect console output to app
+                with stream_to_streamlit(log_box):
+                    try:
+                        den.referee_fast(llm = llm_model)
+                        
+                        if st.session_state.referee_running:  # Only show success if not stopped
+                            st.success("Referee report completed!")
+                    except Exception as e:
+                        st.error(f"Error: {str(e)}")
+                    finally:
+                        st.session_state.referee_running = False
+
+    except FileNotFoundError:
+        st.write("Need to generate a paper first.")
+
+    try:
+        show_markdown_file(den.project_dir+"/input_files/referee.md",label="referee report")
+    except FileNotFoundError:
+        st.write("Referee report not created yet.")
 
 def keywords_comp(den: Denario) -> None:
 

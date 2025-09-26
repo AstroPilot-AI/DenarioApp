@@ -4,7 +4,7 @@ import streamlit as st
 from denario import Denario
 
 from constants import PROJECT_DIR, LLMs
-from components import description_comp, idea_comp, method_comp, results_comp, paper_comp, keywords_comp, check_idea_comp
+from components import description_comp, idea_comp, method_comp, results_comp, paper_comp, keywords_comp, check_idea_comp, referee_comp
 from utils import extract_api_keys, get_project_dir, set_api_keys, create_zip_in_memory, delete_old_folders
 
 #---
@@ -175,13 +175,14 @@ st.markdown(
 #     <i class="fa-solid fa-file-alt"></i> Paper
 # </a>
 
-tab_descr, tab_idea, tab_method, tab_restults, tab_paper,  tab_check_idea, tab_keywords,= st.tabs([
+tab_descr, tab_idea, tab_method, tab_restults, tab_paper,  tab_check_idea, tab_referee, tab_keywords,= st.tabs([
     "**Input prompt**", 
     "**Idea**", 
     "**Methods**", 
     "**Analysis**", 
     "**Paper**", 
     "Literature review",
+    "Referee report",
     "Keywords"
 ])
 
@@ -202,6 +203,9 @@ with tab_paper:
 
 with tab_check_idea:
     check_idea_comp(den)
+
+with tab_referee:
+    referee_comp(den)
 
 with tab_keywords:
     keywords_comp(den)
