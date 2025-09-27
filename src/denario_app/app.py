@@ -141,7 +141,7 @@ PERPLEXITY_API_KEY="..."
 st.write("""
         AI agents to assist the development of a scientific research process.
          
-        From getting research ideas, developing methods, computing results and writing papers.
+        From developing research ideas, developing methods, computing results and writing or reviewing papers.
          """)
 
 # Load Font Awesome CSS

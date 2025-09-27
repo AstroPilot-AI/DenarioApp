@@ -410,7 +410,7 @@ def method_comp(den: Denario) -> None:
 def results_comp(den: Denario) -> None:
 
     st.header("Analysis")
-    st.write("Compute the results, given the methods, idea and data description.")
+    st.write("Compute the results, given the methods, idea and data description. This part is done with [cmbagent](https://github.com/CMBAgents/cmbagent).")
 
     model_keys = list(models.keys())
 
@@ -724,9 +724,15 @@ def paper_comp(den: Denario) -> None:
 def check_idea_comp(den: Denario) -> None:
     
     st.header("Literature review")
-    st.write("Check if the research idea has been investigated in previous literature.")
+    st.write("Check if the research idea has been investigated in previous literature. You can choose between two modes based on [Semantic Scholar](https://www.semanticscholar.org/) or [Futurehouse](https://futurehouse.org/).")
 
-    fast = st.toggle("Fast generation",value=True,key="fast_toggle_check_idea")
+    mode = st.selectbox(
+        "Choose mode for literature search:",
+        options=["semantic_scholar", "futurehouse"],
+        index=0,
+        key="mode_select_check_idea",
+        help="Semantic Scholar: Literature search using Semantic Scholar API\nFuturehouse: Comprehensive search using Futurehouse Owl agent"
+    )
 
     try:
         den.set_idea()
@@ -776,11 +782,8 @@ def check_idea_comp(den: Denario) -> None:
                 # Redirect console output to app
                 with stream_to_streamlit(log_box):
                     try:
-                        if fast:
-                            result = den.check_idea_fast(verbose=True)
-                        else:
-                            result = den.check_idea()
-                            st.write(result)
+                        result = den.check_idea(mode=mode, verbose=True)
+                        st.write(result)
                         
                         if st.session_state.literature_running:  # Only show success if not stopped
                             st.success("Literature search completed!")
