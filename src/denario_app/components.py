@@ -245,9 +245,13 @@ def idea_comp(den: Denario) -> None:
                     if fast:
                         den.get_idea_fast(llm=llm_model, verbose=True)
                     else:
-                        den.get_idea(idea_maker_model=models[idea_maker_model], idea_hater_model=models[idea_hater_model], 
-                                     planner_model=models[planner_model], plan_reviewer_model=models[plan_reviewer_model],
-                                     default_orchestration_model=models[default_orchestration_model], default_formatter_model=models[default_formatter_model])
+                        den.get_idea(idea_maker_model=models[idea_maker_model],
+                                     idea_hater_model=models[idea_hater_model], 
+                                     planner_model=models[planner_model],
+                                     plan_reviewer_model=models[plan_reviewer_model],
+                                     default_orchestration_model=models[default_orchestration_model],
+                                     default_formatter_model=models[default_formatter_model],
+                                     mode="cmbagent")
                     
                     if st.session_state.idea_running:  # Only show success if not stopped
                         st.success("Done!")
@@ -387,7 +391,8 @@ def method_comp(den: Denario) -> None:
                                        plan_reviewer_model=plan_reviewer_model, 
                                        method_generator_model=method_generator_model,
                                        default_orchestration_model=models[default_orchestration_model], 
-                                       default_formatter_model=models[default_formatter_model])
+                                       default_formatter_model=models[default_formatter_model],
+                                       mode="cmbagent")
                     
                     if st.session_state.method_running:  # Only show success if not stopped
                         st.success("Done!")
@@ -853,7 +858,7 @@ def referee_comp(den: Denario) -> None:
                 # Redirect console output to app
                 with stream_to_streamlit(log_box):
                     try:
-                        den.referee_fast(llm = llm_model)
+                        den.referee(llm = llm_model)
                         
                         if st.session_state.referee_running:  # Only show success if not stopped
                             st.success("Referee report completed!")
