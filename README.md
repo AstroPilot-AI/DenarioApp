@@ -60,7 +60,7 @@ streamlit run src/denario_app/app.py
 
 ## Run in Docker
 
-You can run Denario and its GUI in a Docker container. Clone the [app repo](https://github.com/AstroPilot-AI/DenarioApp) and move to the folder. You may need `sudo` permission [or use this link](https://docs.docker.com/engine/install/linux-postinstall/). To build the docker run:
+You can run Denario and its GUI in a Docker container. You may need `sudo` permission [or use this link](https://docs.docker.com/engine/install/linux-postinstall/). Clone [this app repo](https://github.com/AstroPilot-AI/DenarioApp) and move to the folder. To build the docker run:
 
 ```bash
 docker build -t denario-app .
