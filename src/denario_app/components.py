@@ -2,14 +2,49 @@ from pathlib import Path
 from PIL import Image
 import streamlit as st
 from streamlit_pdf_viewer import pdf_viewer
-from denario import Denario, Journal
+from denario import AuthorshipConfirmationError, Denario, Journal
 from denario import models
+from denario.config import (
+    AUTHORSHIP_CONFIRMATION_FILE,
+    IDEA_CANDIDATES_FILE,
+    IDEA_COMPARISON_FILE,
+    METHOD_CANDIDATES_FILE,
+    METHOD_COMPARISON_FILE,
+    RESEARCHER_STATEMENT_FILE,
+)
 
 from utils import show_markdown_file, create_zip_in_memory, stream_to_streamlit
 
 #--- 
 # Components
 #---
+
+
+def input_file_path(den: Denario, filename: str) -> str:
+    return f"{den.project_dir}/input_files/{filename}"
+
+
+def read_input_file(den: Denario, filename: str) -> str:
+    try:
+        with open(input_file_path(den, filename), "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        return ""
+
+
+def candidate_labels(candidates: list[str], prefix: str) -> list[str]:
+    labels = []
+    for index, candidate in enumerate(candidates, start=1):
+        preview = " ".join(candidate.strip().split())[:90]
+        labels.append(f"{prefix} {index}: {preview}")
+    return labels
+
+
+def extract_authorship_summary(confirmation: str) -> str:
+    marker = "## Review Summary"
+    if marker not in confirmation:
+        return ""
+    return confirmation.split(marker, 1)[1].strip()
 
 def description_comp(den: Denario) -> None:
 
@@ -196,6 +231,77 @@ def idea_comp(den: Denario) -> None:
                 index=model_keys.index("o3-mini"),
                 key="idea_formatter_model"
             )
+
+    if "idea_branch_running" not in st.session_state:
+        st.session_state.idea_branch_running = False
+
+    with st.expander("Compare multiple idea candidates"):
+        st.caption("Generate several candidate ideas first, then compare and explicitly select one before proceeding.")
+        idea_branch_count = st.number_input(
+            "Number of idea candidates",
+            min_value=2,
+            max_value=5,
+            value=3,
+            key="idea_branch_count",
+        )
+        branch_button = st.button(
+            "Generate idea candidates",
+            type="secondary",
+            key="generate_idea_candidates",
+            disabled=st.session_state.idea_branch_running,
+        )
+
+        if branch_button and not st.session_state.idea_branch_running:
+            st.session_state.idea_branch_running = True
+            st.rerun()
+
+        if st.session_state.idea_branch_running:
+            with st.spinner("Generating idea candidates...", show_time=True):
+                log_box = st.empty()
+                with stream_to_streamlit(log_box):
+                    try:
+                        if fast:
+                            den.generate_idea_branches(
+                                count=idea_branch_count,
+                                mode="fast",
+                                llm=llm_model,
+                            )
+                        else:
+                            den.generate_idea_branches(
+                                count=idea_branch_count,
+                                mode="cmbagent",
+                                idea_maker_model=models[idea_maker_model],
+                                idea_hater_model=models[idea_hater_model],
+                                planner_model=models[planner_model],
+                                plan_reviewer_model=models[plan_reviewer_model],
+                                orchestration_model=models[orchestration_model],
+                                formatter_model=models[formatter_model],
+                            )
+                        st.success("Idea candidates generated.")
+                    except Exception as e:
+                        st.error(f"Error: {str(e)}")
+                    finally:
+                        st.session_state.idea_branch_running = False
+
+        idea_candidates = getattr(den.research, "idea_candidates", [])
+        if idea_candidates:
+            selected_label = st.selectbox(
+                "Select a candidate to promote to the main idea artifact",
+                candidate_labels(idea_candidates, "Candidate"),
+                key="selected_idea_candidate_label",
+            )
+            selected_index = candidate_labels(idea_candidates, "Candidate").index(selected_label) + 1
+            if st.button("Use selected idea candidate", key="promote_idea_candidate"):
+                den.select_idea_candidate(selected_index)
+                st.success(f"Selected idea candidate {selected_index}.")
+                st.rerun()
+
+            comparison_path = input_file_path(den, IDEA_COMPARISON_FILE)
+            candidates_path = input_file_path(den, IDEA_CANDIDATES_FILE)
+            if Path(candidates_path).exists():
+                show_markdown_file(candidates_path, extra_format=True, label="idea candidates")
+            if Path(comparison_path).exists():
+                show_markdown_file(comparison_path, label="idea comparison")
     
     # Initialize session state for tracking operations
     if "idea_running" not in st.session_state:
@@ -339,6 +445,78 @@ def method_comp(den: Denario) -> None:
                 index=model_keys.index("o3-mini"),
                 key="method_formatter_model"
             )
+
+    if "method_branch_running" not in st.session_state:
+        st.session_state.method_branch_running = False
+
+    with st.expander("Compare multiple method candidates"):
+        st.caption("Generate several methodology candidates, compare them, then explicitly promote one into the main methods artifact.")
+        method_branch_count = st.number_input(
+            "Number of method candidates",
+            min_value=2,
+            max_value=5,
+            value=3,
+            key="method_branch_count",
+        )
+        method_branch_button = st.button(
+            "Generate method candidates",
+            type="secondary",
+            key="generate_method_candidates",
+            disabled=st.session_state.method_branch_running,
+        )
+
+        if method_branch_button and not st.session_state.method_branch_running:
+            st.session_state.method_branch_running = True
+            st.rerun()
+
+        if st.session_state.method_branch_running:
+            with st.spinner("Generating method candidates...", show_time=True):
+                log_box = st.empty()
+                with stream_to_streamlit(log_box):
+                    try:
+                        if fast:
+                            den.generate_method_branches(
+                                count=method_branch_count,
+                                mode="fast",
+                                llm=llm_model,
+                            )
+                        else:
+                            den.generate_method_branches(
+                                count=method_branch_count,
+                                mode="cmbagent",
+                                planner_model=planner_model,
+                                plan_reviewer_model=plan_reviewer_model,
+                                method_generator_model=method_generator_model,
+                                orchestration_model=models[orchestration_model],
+                                formatter_model=models[formatter_model],
+                            )
+                        st.success("Method candidates generated.")
+                    except Exception as e:
+                        st.error(f"Error: {str(e)}")
+                    finally:
+                        st.session_state.method_branch_running = False
+
+        method_candidates = getattr(den.research, "method_candidates", [])
+        if method_candidates:
+            method_candidate_options = candidate_labels(method_candidates, "Candidate")
+            selected_label = st.selectbox(
+                "Select a candidate to promote to the main methods artifact",
+                method_candidate_options,
+                key="selected_method_candidate_label",
+            )
+            selected_index = method_candidate_options.index(selected_label) + 1
+            if st.button("Use selected method candidate", key="promote_method_candidate"):
+                den.select_method_candidate(selected_index)
+                st.success(f"Selected method candidate {selected_index}.")
+                st.rerun()
+
+            method_candidates_path = input_file_path(den, METHOD_CANDIDATES_FILE)
+            method_comparison_path = input_file_path(den, METHOD_COMPARISON_FILE)
+            if Path(method_candidates_path).exists():
+                show_markdown_file(method_candidates_path, extra_format=True, label="method candidates")
+            if Path(method_comparison_path).exists():
+                show_markdown_file(method_comparison_path, label="method comparison")
+
     # Initialize session state for tracking operations
     if "method_running" not in st.session_state:
         st.session_state.method_running = False
@@ -605,6 +783,106 @@ def paper_comp(den: Denario) -> None:
     st.header("Article")
     st.write("Write the article using the computed results of the research.")
 
+    current_researcher_statement = read_input_file(den, RESEARCHER_STATEMENT_FILE)
+    current_authorship_confirmation = read_input_file(den, AUTHORSHIP_CONFIRMATION_FILE)
+
+    if "researcher_statement_text" not in st.session_state:
+        st.session_state.researcher_statement_text = current_researcher_statement
+    if "authorship_summary" not in st.session_state:
+        st.session_state.authorship_summary = extract_authorship_summary(
+            current_authorship_confirmation
+        )
+
+    with st.expander("Researcher statement", expanded=bool(current_researcher_statement)):
+        st.caption("Capture the framing, stance, or non-negotiable perspective you want the paper-writing agents to preserve.")
+        uploaded_statement = st.file_uploader(
+            "Upload a researcher statement",
+            accept_multiple_files=False,
+            key="upload_researcher_statement",
+        )
+        if uploaded_statement:
+            uploaded_bytes = uploaded_statement.getvalue()
+            upload_fingerprint = f"{uploaded_statement.name}:{len(uploaded_bytes)}"
+            if (
+                st.session_state.get("uploaded_researcher_statement_fingerprint")
+                != upload_fingerprint
+            ):
+                st.session_state.researcher_statement_text = uploaded_bytes.decode("utf-8")
+                st.session_state.uploaded_researcher_statement_fingerprint = (
+                    upload_fingerprint
+                )
+
+        researcher_statement = st.text_area(
+            "Researcher statement",
+            key="researcher_statement_text",
+            height=180,
+            placeholder="State the framing, scope limits, preferred emphasis, and any claims or interpretations the draft must avoid.",
+        )
+
+        if st.button("Save researcher statement", type="secondary", key="save_researcher_statement"):
+            if researcher_statement.strip():
+                den.set_researcher_statement(researcher_statement)
+                st.success("Researcher statement saved.")
+                st.rerun()
+            else:
+                st.warning("Please enter a researcher statement before saving.")
+
+        if Path(input_file_path(den, RESEARCHER_STATEMENT_FILE)).exists():
+            show_markdown_file(
+                input_file_path(den, RESEARCHER_STATEMENT_FILE),
+                label="researcher statement",
+            )
+
+    with st.expander("Authorship confirmation", expanded=not bool(current_authorship_confirmation)):
+        st.caption("Paper generation now requires explicit human review and sign-off. Saved confirmations are automatically invalidated when upstream artifacts change.")
+
+        if current_authorship_confirmation.strip():
+            st.success("A saved authorship confirmation is on file.")
+        else:
+            st.warning("No saved authorship confirmation found yet.")
+
+        authorship_summary = st.text_area(
+            "What did you review or rewrite before generating the paper?",
+            key="authorship_summary",
+            height=140,
+            placeholder="Describe what you checked, rewrote, or validated in the idea, methods, results, and literature artifacts.",
+        )
+        reviewed_claims = st.checkbox(
+            "I reviewed the paper's scientific claims against the artifacts.",
+            key="reviewed_claims_checkbox",
+        )
+        reviewed_citations = st.checkbox(
+            "I reviewed the citations or accept responsibility for citation accuracy.",
+            key="reviewed_citations_checkbox",
+        )
+        accepts_responsibility = st.checkbox(
+            "I accept human authorship responsibility for the generated paper.",
+            key="accepts_authorship_checkbox",
+        )
+
+        if st.button(
+            "Save authorship confirmation",
+            type="secondary",
+            key="save_authorship_confirmation",
+        ):
+            try:
+                den.confirm_authorship(
+                    summary=authorship_summary,
+                    reviewed_claims=reviewed_claims,
+                    reviewed_citations=reviewed_citations,
+                    accepts_responsibility=accepts_responsibility,
+                )
+                st.success("Authorship confirmation saved.")
+                st.rerun()
+            except ValueError as e:
+                st.error(str(e))
+
+        if Path(input_file_path(den, AUTHORSHIP_CONFIRMATION_FILE)).exists():
+            show_markdown_file(
+                input_file_path(den, AUTHORSHIP_CONFIRMATION_FILE),
+                label="authorship confirmation",
+            )
+
     with st.expander("Options for the paper writing agents"):
 
         st.caption("Choose a LLM model for the paper generation")
@@ -628,6 +906,9 @@ def paper_comp(den: Denario) -> None:
             key="writer_type",
             value="scientist",
         )
+
+    if not current_authorship_confirmation.strip():
+        st.info("Generate paper is available, but it will stop with a targeted instruction until you save an authorship confirmation above.")
 
     # Initialize session state for tracking operations
     if "paper_running" not in st.session_state:
@@ -677,6 +958,10 @@ def paper_comp(den: Denario) -> None:
                 if st.session_state.paper_running:  # Only show success if not stopped
                     st.success("Done!")
                     st.balloons()
+            except AuthorshipConfirmationError as e:
+                st.error(
+                    f"{str(e)} Save an authorship confirmation in the section above, then rerun paper generation."
+                )
             except Exception as e:
                 st.error(f"Error: {str(e)}")
             finally:

@@ -8,6 +8,11 @@ DenarioApp is the GUI for multiagent research assistant system [Denario](https:/
 
 ## Launch the GUI
 
+This beta UI targets the Denario `1.1` beta line because it exposes:
+- explicit authorship confirmation before paper generation
+- researcher-statement framing for paper writing
+- compare-before-converge branching for ideas and methods
+
 Install the app with
 
 ```bash
